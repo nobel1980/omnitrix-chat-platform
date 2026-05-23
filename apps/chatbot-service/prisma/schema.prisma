@@ -1,0 +1,176 @@
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Conversation {
+  id              String            @id @default(uuid()) @db.VarChar(36)
+
+  tenantId        String?           @db.VarChar(64) // SaaS ready
+  channel         ChannelType
+  externalUserId  String            @db.VarChar(128) // WhatsApp/Messenger/IG user id
+
+  status          ConversationStatus @default(ACTIVE)
+
+  aiEnabled       Boolean           @default(true)
+  assignedAgentId String?           @db.VarChar(36)
+
+  startedAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  endedAt         DateTime?
+  deletedAt       DateTime?
+  metadata        Json?
+  messages        Message[]
+  participants    ConversationParticipant[]
+  assignedAgent   Agent? @relation(fields: [assignedAgentId], references: [id])
+  @@index([assignedAgentId])
+  @@index([externalUserId])
+  @@index([status])
+  @@index([channel])
+  @@index([tenantId])
+}
+
+model Message {
+  id              String        @id @default(uuid()) @db.VarChar(36)
+  conversationId  String        @db.VarChar(36)
+  conversation    Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  direction       MessageDirection
+  tenantId        String?       @db.VarChar(64)
+  type            MessageType   @default(TEXT)
+  content         String?       @db.LongText
+  channelMessageId String?      @db.VarChar(128) // WhatsApp/Messenger message id
+  intent          String?       @db.VarChar(64)
+  sentiment       SentimentType?
+  aiModel         String?       @db.VarChar(64) // GPT, Claude, local model
+  aiTokens        Int?
+  metadata        Json?
+  status          MessageStatus @default(SENT)
+  createdAt       DateTime      @default(now())
+  deletedAt       DateTime?
+  channelMaps     ChannelMessageMap[]
+  @@index([conversationId, createdAt])
+  @@index([tenantId, conversationId])
+}
+
+enum ChannelType {
+  WHATSAPP
+  MESSENGER
+  INSTAGRAM
+  WEB
+  API
+}
+
+enum ConversationStatus {
+  ACTIVE
+  WAITING_USER
+  WAITING_AGENT
+  ESCALATED
+  RESOLVED
+  CLOSED
+}
+
+enum MessageDirection {
+  INBOUND   // user → system
+  OUTBOUND  // system → user
+  INTERNAL  // system logs / AI reasoning
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  FILE
+  AUDIO
+  VIDEO
+  LOCATION
+  SYSTEM
+}
+
+enum SentimentType {
+  POSITIVE
+  NEUTRAL
+  NEGATIVE
+}
+
+model ConversationParticipant {
+  id              String @id @default(uuid()) @db.VarChar(36)
+  tenantId        String? @db.VarChar(64)
+  conversationId  String @db.VarChar(36)
+  userId          String @db.VarChar(128)
+  role            ParticipantRole
+  joinedAt        DateTime @default(now())
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  @@index([conversationId])
+  @@index([userId])
+}
+
+enum ParticipantRole {
+  CUSTOMER
+  AGENT
+  BOT
+}
+
+model Agent {
+  id          String @id @default(uuid()) @db.VarChar(36)
+  tenantId    String @db.VarChar(64)
+  name        String @db.VarChar(191)
+  email       String @unique @db.VarChar(191)
+  role        AgentRole
+  isActive    Boolean @default(true)
+  createdAt   DateTime @default(now())
+  assignedConversations Conversation[]
+  @@index([tenantId])
+}
+
+enum AgentRole {
+  ADMIN
+  SUPERVISOR
+  AGENT
+}
+
+enum MessageStatus {
+  QUEUED
+  SENT   
+  DELIVERED
+  READ
+  FAILED
+}
+
+model ChannelMessageMap {
+  id              String @id @default(uuid()) @db.VarChar(36)
+  tenantId        String? @db.VarChar(64)
+  messageId       String @db.VarChar(36)
+  message         Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  channel         ChannelType
+  externalId      String @db.VarChar(128)
+  createdAt       DateTime @default(now())
+  @@index([channel, externalId])
+  @@unique([channel, externalId])
+}
+
+model AITrace {
+  id              String @id @default(uuid()) @db.VarChar(36)
+  conversationId  String @db.VarChar(36)
+  messageId       String? @db.VarChar(36)
+  model           String @db.VarChar(64)
+  promptTokens    Int?
+  completionTokens Int?
+  latencyMs       Int
+  confidence      Float?
+  createdAt       DateTime @default(now())
+  @@index([conversationId])
+}
+
+model ConversationStateLog {
+  id              String @id @default(uuid()) @db.VarChar(36)
+  conversationId  String @db.VarChar(36)
+  tenantId        String? @db.VarChar(64)
+  fromStatus      ConversationStatus
+  toStatus        ConversationStatus
+  changedBy       String @db.VarChar(128) // AI or agent id
+  createdAt       DateTime @default(now())
+  @@index([conversationId])
+}

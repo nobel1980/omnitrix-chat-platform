@@ -1,0 +1,35 @@
+{
+  "name": "omnichannel-platform",
+  "version": "1.0.0",
+  "description": "Enterprise Omnichannel Communication Platform",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "libs/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "clean": "npm run clean --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "chatbot:dev": "npm run dev -w apps/chatbot-service",
+    "chatbot:build": "npm run build -w apps/chatbot-service",
+    "chatbot:test": "npm run test -w apps/chatbot-service"
+  },
+  "engines": {
+    "node": ">=22.0.0",
+    "npm": ">=10.0.0"
+  },
+  "packageManager": "npm@10",
+  "keywords": [
+    "omnichannel",
+    "microservices",
+    "monorepo",
+    "nodejs",
+    "chatbot",
+    "enterprise"
+  ],
+  "license": "ISC"
+}

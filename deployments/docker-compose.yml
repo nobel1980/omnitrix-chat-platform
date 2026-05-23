@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  # Message Broker for asynchronous microservice communication
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: omnichannel-rabbitmq
+    ports:
+      - "5672:5672"   # AMQP protocol port
+      - "15672:15672" # Management UI port
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - omnichannel-network
+
+  # Relational Database for structured transactional data (MySQL)
+  mysql:
+    image: mysql:8.0
+    container_name: omnichannel-mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_DATABASE: chatbot
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - omnichannel-network
+
+  # Document Store for chat messages, logs, and audit trails
+  mongodb:
+    image: mongo:6.0
+    container_name: omnichannel-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: adminpassword
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - omnichannel-network
+
+  # Cache and Key-Value Store for session management and rate limiting
+  redis:
+    image: redis:7-alpine
+    container_name: omnichannel-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - omnichannel-network
+
+volumes:
+  rabbitmq_data:
+  mysql_data:
+  mongodb_data:
+  redis_data:
+
+networks:
+  omnichannel-network:
+    driver: bridge
